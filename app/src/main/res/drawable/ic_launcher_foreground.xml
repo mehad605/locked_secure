@@ -1,0 +1,37 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Group that centers and scales the logo to fit standard adaptive masks safely -->
+    <group
+        android:pivotX="256"
+        android:pivotY="256"
+        android:scaleX="0.65"
+        android:scaleY="0.65">
+        
+        <!-- Shield Outline -->
+        <path
+            android:pathData="M 256, 100 C 375, 100 390, 142 390, 230 C 390, 342 256, 416 256, 416 C 256, 416 122, 342 122, 230 C 122, 142 137, 100 256, 100 Z"
+            android:strokeColor="#10B981"
+            android:strokeWidth="18"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+
+        <!-- Power Button Ring -->
+        <path
+            android:pathData="M 215 230 A 52 52 0 1 0 297 230"
+            android:strokeColor="#10B981"
+            android:strokeWidth="18"
+            android:strokeLineCap="round" />
+
+        <!-- Power Button Line -->
+        <path
+            android:pathData="M 256 180 L 256 235"
+            android:strokeColor="#10B981"
+            android:strokeWidth="18"
+            android:strokeLineCap="round" />
+            
+    </group>
+</vector>

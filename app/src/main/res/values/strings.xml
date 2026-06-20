@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">LockedSecure</string>
+    <string name="accessibility_service_description">LockedSecure blocks the power menu when the screen is locked to prevent unauthorized phone shutdown by thieves.</string>
+</resources>
