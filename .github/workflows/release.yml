@@ -1,4 +1,4 @@
-name: Build & Release Android App
+name: 🚀 Build & Release Locked Secure
 
 on:
   push:
@@ -7,67 +7,97 @@ on:
   workflow_dispatch:
     inputs:
       version_number:
-        description: 'Enter the release version (e.g., v1.0.0)'
+        description: 'Enter the release version (e.g. v1.0.0)'
         required: true
         type: string
-      generate_release_notes:
-        description: 'Generate human-readable, user-friendly release notes automatically?'
-        type: boolean
-        required: false
-        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  release:
-    name: Build & Release Android App
+  validate:
+    name: 🧪 Lint & Test
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
+    timeout-minutes: 15
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: ⬇️ Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - name: ⚙️ Set up JDK 17
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+      - name: 🐘 Setup Gradle
+        uses: gradle/actions/setup-gradle@d9c87d481d55275bb5441eef3fe0e46805f9ef70 # v3.5.0
         with:
-          cache-read-only: false
+          cache-read-only: ${{ github.event_name != 'push' }}
 
-      - name: Grant Execute Permissions
-        run: chmod +x ./gradlew
+      - name: 🔍 Run Lint
+        run: ./gradlew lint --no-daemon
 
-      - name: Determine Version
+      - name: 🧪 Run Unit Tests
+        run: ./gradlew test --no-daemon
+
+  release:
+    name: 📦 Build & Release
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: ⬇️ Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: ⚙️ Set up JDK 17
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 🐘 Setup Gradle
+        uses: gradle/actions/setup-gradle@d9c87d481d55275bb5441eef3fe0e46805f9ef70 # v3.5.0
+        with:
+          cache-read-only: true
+
+      - name: 🏷️ Determine Version
         id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version_number }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            RAW_VER="${{ github.event.inputs.version_number }}"
-            echo "GENERATE_NOTES=${{ github.event.inputs.generate_release_notes }}" >> $GITHUB_ENV
+            RAW_VER="$INPUT_VERSION"
           else
-            RAW_VER="${{ github.ref_name }}"
-            echo "GENERATE_NOTES=true" >> $GITHUB_ENV
+            RAW_VER="${GITHUB_REF_NAME}"
           fi
-          CLEAN_VER=$(echo "$RAW_VER" | sed 's/^v//')
+          
+          CLEAN_VER="${RAW_VER#v}"
           VAL_CODE=$((100 + ${{ github.run_number }}))
+
           echo "VERSION=$RAW_VER" >> $GITHUB_ENV
           echo "CLEAN_VERSION=$CLEAN_VER" >> $GITHUB_ENV
           echo "VERSION_CODE=$VAL_CODE" >> $GITHUB_ENV
 
-      - name: Decode Keystore (Secure CI/CD)
-        env:
-          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY }}
-        run: |
-          if [ -n "$SIGNING_KEY_BASE64" ]; then
-            echo "$SIGNING_KEY_BASE64" | base64 -di > app/signing-key.jks
-          fi
+      - name: 🔐 Decode Keystore
+        uses: timheuer/base64-to-file@ca9e30baf83f7f26708fb0059af9a0973fe5f27e # v1.2.4
+        id: keystore
+        with:
+          fileName: 'signing-key.jks'
+          encodedString: ${{ secrets.SIGNING_KEY }}
 
-      - name: Build Split Release APKs
+      - name: 🛠️ Build Split Release APKs
         env:
-          ANDROID_SIGNING_KEY_FILE: "signing-key.jks"
+          ANDROID_SIGNING_KEY_FILE: ${{ steps.keystore.outputs.filePath }}
           ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
@@ -77,28 +107,36 @@ jobs:
           ./gradlew assembleRelease \
             --build-cache \
             --no-daemon \
-            --parallel \
             -Dorg.gradle.jvmargs="-Xmx4g -XX:+UseParallelGC" \
-            -Dkotlin.compiler.execution.strategy="in-process" \
-            -Pandroid.enablePngCrunching=false
+            -Dkotlin.compiler.execution.strategy="in-process"
 
-      - name: Rename & Package Artifacts
+      - name: 📦 Rename Artifacts
         run: |
-          mv app/build/outputs/apk/release/app-arm64-v8a-release*.apk ./locked-secure-${{ env.VERSION }}-arm64-v8a.apk
+          mv app/build/outputs/apk/release/app-arm64-v8a-release*.apk  ./locked-secure-${{ env.VERSION }}-arm64-v8a.apk
           mv app/build/outputs/apk/release/app-armeabi-v7a-release*.apk ./locked-secure-${{ env.VERSION }}-armeabi-v7a.apk
-          mv app/build/outputs/apk/release/app-x86-release*.apk ./locked-secure-${{ env.VERSION }}-x86.apk
-          mv app/build/outputs/apk/release/app-x86_64-release*.apk ./locked-secure-${{ env.VERSION }}-x86_64.apk
+          mv app/build/outputs/apk/release/app-x86-release*.apk         ./locked-secure-${{ env.VERSION }}-x86.apk
+          mv app/build/outputs/apk/release/app-x86_64-release*.apk      ./locked-secure-${{ env.VERSION }}-x86_64.apk
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: 📝 Generate SHA-256 Checksums
+        run: |
+          sha256sum locked-secure-*.apk > SHA256SUMS.txt
+
+      - name: 🛡️ Attest Build Provenance
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v1.4.3
+        with:
+          subject-path: 'locked-secure-*.apk'
+
+      - name: 🚀 Publish GitHub Release
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           tag_name: ${{ env.VERSION }}
           name: Release ${{ env.VERSION }}
+          generate_release_notes: true
           draft: false
           prerelease: false
-          generate_release_notes: ${{ env.GENERATE_NOTES }}
           files: |
             locked-secure-${{ env.VERSION }}-arm64-v8a.apk
             locked-secure-${{ env.VERSION }}-armeabi-v7a.apk
             locked-secure-${{ env.VERSION }}-x86.apk
             locked-secure-${{ env.VERSION }}-x86_64.apk
+            SHA256SUMS.txt
