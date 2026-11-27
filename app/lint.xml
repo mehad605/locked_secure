@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!--
+        Dependency, Gradle, AGP, and targetSdk version bumps are managed deliberately and
+        deterministically rather than failing CI lint whenever an upstream runner image
+        preinstalls a newer SDK platform or a new library patch releases.
+        All code, security, correctness, and resource lint issues remain strictly enforced.
+    -->
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+    <issue id="GradleDependency" severity="ignore" />
+    <issue id="NewerVersionAvailable" severity="ignore" />
+    <issue id="OldTargetApi" severity="ignore" />
+</lint>

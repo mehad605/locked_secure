@@ -1,0 +1,8 @@
+# Default code owner for LockedSecure
+* @mehad605
+
+# High-security paths requiring explicit owner review
+/.github/ @mehad605
+/app/src/main/AndroidManifest.xml @mehad605
+/app/proguard-rules.pro @mehad605
+/gradle/wrapper/ @mehad605

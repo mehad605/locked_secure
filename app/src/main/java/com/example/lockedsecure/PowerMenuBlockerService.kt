@@ -1,41 +1,38 @@
 package com.example.lockedsecure
 
 import android.accessibilityservice.AccessibilityService
-import android.app.KeyguardManager
-import android.content.Context
 import android.view.accessibility.AccessibilityEvent
-import android.util.Log
+import com.example.lockedsecure.app.LockedSecureApp
+import com.example.lockedsecure.feature.powerblocker.domain.PowerMenuActionPolicy
+import com.example.lockedsecure.feature.powerblocker.domain.PowerMenuDecision
+import com.example.lockedsecure.feature.powerblocker.domain.PowerMenuEvent
 
+/**
+ * Accessibility service entry point that intercepts and dismisses the system power menu
+ * while the device keyguard is locked.
+ *
+ * Kept at `com.example.lockedsecure.PowerMenuBlockerService` to preserve manifest component
+ * identity across app upgrades so users do not lose their enabled Accessibility Service state.
+ */
 class PowerMenuBlockerService : AccessibilityService() {
+    private val actionPolicy: PowerMenuActionPolicy by lazy {
+        LockedSecureApp.graph(this).powerMenuActionPolicy
+    }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        // ponytail: check only state changes which are triggered by dialog/window openings
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            val packageName = event.packageName?.toString()
-            val className = event.className?.toString()
-            
-            // Log for debugging
-            Log.d("PowerMenuBlocker", "Window changed: pkg=$packageName class=$className")
-
-            // ponytail: identify power menu dialog window classes across standard and custom ROMs (Samsung, Pixel, Xiaomi, etc.)
-            val isPowerMenu = className?.contains("GlobalActions", ignoreCase = true) == true
-                    || className?.contains("globalactions", ignoreCase = true) == true
-                    || (packageName == "com.android.systemui" && className?.contains("dialog", ignoreCase = true) == true && className.contains("global", ignoreCase = true))
-
-            if (isPowerMenu) {
-                val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-                if (keyguardManager.isKeyguardLocked) {
-                    // Block the shutdown by dismissing the global actions menu
-                    performGlobalAction(GLOBAL_ACTION_BACK)
-                    Log.i("PowerMenuBlocker", "Power menu blocked and dismissed on lock screen.")
-                } else {
-                    Log.d("PowerMenuBlocker", "Power menu opened while screen is unlocked. Allowed.")
-                }
-            }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event == null) return
+        val domainEvent =
+            PowerMenuEvent(
+                isWindowStateChanged = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+                packageName = event.packageName?.toString(),
+                className = event.className?.toString(),
+            )
+        if (actionPolicy.evaluate(domainEvent) == PowerMenuDecision.BLOCK_AND_DISMISS) {
+            performGlobalAction(GLOBAL_ACTION_BACK)
         }
     }
 
     override fun onInterrupt() {
-        // No-op
+        // No transient feedback or held resources to release on interrupt.
     }
 }

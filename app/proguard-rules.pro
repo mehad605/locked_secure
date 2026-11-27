@@ -1,14 +1,11 @@
-# LockedSecure ProGuard Rules
-# Keep Compose and Accessibility service entries
+# LockedSecure R8 / ProGuard Rules (R8 full mode)
+#
+# AndroidManifest entry points (LockedSecureApp, MainActivity, PowerMenuBlockerService,
+# AdminReceiver) are kept automatically via aapt2-generated rules. No blanket -keep rules exist.
 
--keepclassmembers class * extends android.accessibilityservice.AccessibilityService { *; }
--keepclassmembers class * extends android.app.admin.DeviceAdminReceiver { *; }
-
-# Keep Compose runtime
--dontwarn androidx.compose.**
--keep class androidx.compose.** { *; }
-
-# Keep Kotlin serialization
--keepattributes *Annotation*, InnerClasses
--dontnote kotlinx.serialization.AnnotationsKt
--keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
+# Strip any accidental verbose/debug/info logcat calls from release bytecode
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}

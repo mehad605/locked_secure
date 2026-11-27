@@ -1,0 +1,30 @@
+name: Setup Android Build Environment
+description: Sets up JDK 17, validates the Gradle wrapper, and configures Gradle safely.
+
+inputs:
+  cache-disabled:
+    description: Disable Gradle caching entirely (required for trusted release builds).
+    required: false
+    default: 'false'
+  cache-read-only:
+    description: Restrict Gradle cache writes on untrusted refs.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up JDK 17
+      uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Validate Gradle wrapper
+      uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      with:
+        cache-disabled: ${{ inputs.cache-disabled }}
+        cache-read-only: ${{ inputs.cache-read-only }}
