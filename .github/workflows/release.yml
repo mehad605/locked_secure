@@ -1,142 +1,255 @@
-name: 🚀 Build & Release Locked Secure
+name: Build & Release LockedSecure
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
     inputs:
-      version_number:
-        description: 'Enter the release version (e.g. v1.0.0)'
+      dry_run_tag:
+        description: 'SemVer tag to simulate in dry-run mode (e.g. v2.0.0; never publishes a release)'
         required: true
+        default: 'v2.0.0'
         type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   validate:
-    name: 🧪 Lint & Test
+    name: Validate Code Quality & Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read # Checkout repository sources for validation
     steps:
-      - name: ⬇️ Checkout Code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: ⚙️ Set up JDK 17
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          persist-credentials: false
 
-      - name: 🐘 Setup Gradle
-        uses: gradle/actions/setup-gradle@d9c87d481d55275bb5441eef3fe0e46805f9ef70 # v3.5.0
+      - name: Setup Android build environment
+        uses: ./.github/actions/setup-android-env # zizmor: ignore[self-repository] -- actionlint v1.7.12 requires './' syntax for local composite actions
         with:
-          cache-read-only: ${{ github.event_name != 'push' }}
+          cache-disabled: 'true'
 
-      - name: 🔍 Run Lint
-        run: ./gradlew lint --no-daemon
-
-      - name: 🧪 Run Unit Tests
-        run: ./gradlew test --no-daemon
+      - name: Run Spotless, Detekt, Lint & Unit Tests
+        run: ./gradlew spotlessCheck detekt lint test --no-daemon
 
   release:
-    name: 📦 Build & Release
+    name: Build, Verify & Publish Signed Release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 25
+    environment: release
     permissions:
-      contents: write
-      id-token: write
-      attestations: write
+      contents: write # Create and publish draft GitHub Release with APK, SBOM, and checksums
+      id-token: write # Mint OIDC token for SLSA build provenance attestation
+      attestations: write # Persist Sigstore build provenance attestation
     steps:
-      - name: ⬇️ Checkout Code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: ⚙️ Set up JDK 17
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+      - name: Setup Android build environment
+        uses: ./.github/actions/setup-android-env # zizmor: ignore[self-repository] -- actionlint v1.7.12 requires './' syntax for local composite actions
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          cache-disabled: 'true'
 
-      - name: 🐘 Setup Gradle
-        uses: gradle/actions/setup-gradle@d9c87d481d55275bb5441eef3fe0e46805f9ef70 # v3.5.0
-        with:
-          cache-read-only: true
-
-      - name: 🏷️ Determine Version
-        id: version
+      - name: Derive deterministic SemVer versionName and versionCode
         env:
-          INPUT_VERSION: ${{ github.event.inputs.version_number }}
+          RAW_TAG: ${{ github.ref_name }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            RAW_VER="$INPUT_VERSION"
-          else
-            RAW_VER="${GITHUB_REF_NAME}"
+          if [[ ! "$RAW_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "ERROR: Tag '$RAW_TAG' must match vMAJOR.MINOR.PATCH" >&2
+            exit 1
           fi
-          
-          CLEAN_VER="${RAW_VER#v}"
-          VAL_CODE=$((100 + ${{ github.run_number }}))
+          MAJOR="${BASH_REMATCH[1]}"
+          MINOR="${BASH_REMATCH[2]}"
+          PATCH="${BASH_REMATCH[3]}"
+          CLEAN_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          VERSION_CODE=$((10#$MAJOR * 10000 + 10#$MINOR * 100 + 10#$PATCH))
+          {
+            echo "RELEASE_TAG=$RAW_TAG"
+            echo "APP_VERSION_NAME=$CLEAN_VERSION"
+            echo "APP_VERSION_CODE=$VERSION_CODE"
+          } >> "$GITHUB_ENV"
 
-          echo "VERSION=$RAW_VER" >> $GITHUB_ENV
-          echo "CLEAN_VERSION=$CLEAN_VER" >> $GITHUB_ENV
-          echo "VERSION_CODE=$VAL_CODE" >> $GITHUB_ENV
-
-      - name: 🔐 Decode Keystore
-        uses: timheuer/base64-to-file@ca9e30baf83f7f26708fb0059af9a0973fe5f27e # v1.2.4
-        id: keystore
-        with:
-          fileName: 'signing-key.jks'
-          encodedString: ${{ secrets.SIGNING_KEY }}
-
-      - name: 🛠️ Build Split Release APKs
+      - name: Decode signing keystore to temporary runner storage
         env:
-          ANDROID_SIGNING_KEY_FILE: ${{ steps.keystore.outputs.filePath }}
+          SIGNING_KEY_B64: ${{ secrets.SIGNING_KEY }}
+        run: |
+          umask 077
+          KEYSTORE_PATH="$(mktemp "${RUNNER_TEMP}/keystore-XXXXXX.jks")"
+          printf '%s' "$SIGNING_KEY_B64" | base64 --decode > "$KEYSTORE_PATH"
+          echo "ANDROID_SIGNING_KEY_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+
+      - name: Build signed universal release APK
+        env:
           ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-          APP_VERSION_NAME: ${{ env.CLEAN_VERSION }}
-          APP_VERSION_CODE: ${{ env.VERSION_CODE }}
         run: |
           ./gradlew assembleRelease \
-            --build-cache \
-            --no-daemon \
-            -Dorg.gradle.jvmargs="-Xmx4g -XX:+UseParallelGC" \
-            -Dkotlin.compiler.execution.strategy="in-process"
+            --no-build-cache \
+            --no-daemon
 
-      - name: 📦 Rename Artifacts
+      - name: Shred temporary keystore
+        if: always()
         run: |
-          mv app/build/outputs/apk/release/app-arm64-v8a-release*.apk  ./locked-secure-${{ env.VERSION }}-arm64-v8a.apk
-          mv app/build/outputs/apk/release/app-armeabi-v7a-release*.apk ./locked-secure-${{ env.VERSION }}-armeabi-v7a.apk
-          mv app/build/outputs/apk/release/app-x86-release*.apk         ./locked-secure-${{ env.VERSION }}-x86.apk
-          mv app/build/outputs/apk/release/app-x86_64-release*.apk      ./locked-secure-${{ env.VERSION }}-x86_64.apk
+          if [ -n "${ANDROID_SIGNING_KEY_FILE:-}" ] && [ -f "$ANDROID_SIGNING_KEY_FILE" ]; then
+            shred -u "$ANDROID_SIGNING_KEY_FILE" || rm -f "$ANDROID_SIGNING_KEY_FILE"
+          fi
 
-      - name: 📝 Generate SHA-256 Checksums
+      - name: Stage and verify release APK
         run: |
-          sha256sum locked-secure-*.apk > SHA256SUMS.txt
+          mkdir -p release-artifacts
+          FINAL_APK="release-artifacts/locked-secure-${RELEASE_TAG}-universal.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$FINAL_APK"
+          bash scripts/verify_release_apk.sh "$FINAL_APK" "$APP_VERSION_NAME" "$APP_VERSION_CODE" 153600
 
-      - name: 🛡️ Attest Build Provenance
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v1.4.3
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@dfcb83b97731532d72be422cbc51ee64adb6fd56 # v0.24.4
         with:
-          subject-path: 'locked-secure-*.apk'
+          path: .
+          format: cyclonedx-json
+          output-file: release-artifacts/sbom.cdx.json
+          upload-artifact: false
 
-      - name: 🚀 Publish GitHub Release
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+      - name: Generate SHA-256 checksums
+        run: |
+          (
+            cd release-artifacts
+            sha256sum "locked-secure-${RELEASE_TAG}-universal.apk" sbom.cdx.json > SHA256SUMS.txt
+          )
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          tag_name: ${{ env.VERSION }}
-          name: Release ${{ env.VERSION }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-          files: |
-            locked-secure-${{ env.VERSION }}-arm64-v8a.apk
-            locked-secure-${{ env.VERSION }}-armeabi-v7a.apk
-            locked-secure-${{ env.VERSION }}-x86.apk
-            locked-secure-${{ env.VERSION }}-x86_64.apk
-            SHA256SUMS.txt
+          subject-path: release-artifacts/locked-secure-*.apk
+
+      - name: Publish release idempotently (draft then publish)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK_FILE="release-artifacts/locked-secure-${RELEASE_TAG}-universal.apk"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" \
+              "$APK_FILE" \
+              release-artifacts/sbom.cdx.json \
+              release-artifacts/SHA256SUMS.txt \
+              --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              "$APK_FILE" \
+              release-artifacts/sbom.cdx.json \
+              release-artifacts/SHA256SUMS.txt \
+              --draft \
+              --title "Release ${RELEASE_TAG}" \
+              --generate-notes
+          fi
+          gh release edit "$RELEASE_TAG" --draft=false
+
+  dry-run:
+    name: Dry-Run Release Pipeline (Ephemeral Signing)
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read # Checkout repository sources for dry-run verification
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Android build environment
+        uses: ./.github/actions/setup-android-env # zizmor: ignore[self-repository] -- actionlint v1.7.12 requires './' syntax for local composite actions
+        with:
+          cache-disabled: 'true'
+
+      - name: Validate and derive dry-run SemVer version
+        env:
+          RAW_TAG: ${{ inputs.dry_run_tag }}
+        run: |
+          if [[ ! "$RAW_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "ERROR: dry_run_tag '$RAW_TAG' must match vMAJOR.MINOR.PATCH" >&2
+            exit 1
+          fi
+          MAJOR="${BASH_REMATCH[1]}"
+          MINOR="${BASH_REMATCH[2]}"
+          PATCH="${BASH_REMATCH[3]}"
+          CLEAN_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          VERSION_CODE=$((10#$MAJOR * 10000 + 10#$MINOR * 100 + 10#$PATCH))
+          {
+            echo "RELEASE_TAG=$RAW_TAG"
+            echo "APP_VERSION_NAME=$CLEAN_VERSION"
+            echo "APP_VERSION_CODE=$VERSION_CODE"
+          } >> "$GITHUB_ENV"
+
+      - name: Generate ephemeral dry-run keystore
+        run: |
+          umask 077
+          KEYSTORE_PATH="$(mktemp "${RUNNER_TEMP}/dryrun-XXXXXX.jks")"
+          rm -f "$KEYSTORE_PATH"
+          EPHEMERAL_PASS="$(openssl rand -hex 16)"
+          echo "::add-mask::$EPHEMERAL_PASS"
+          keytool -genkeypair -v \
+            -keystore "$KEYSTORE_PATH" \
+            -alias dryrun \
+            -keyalg RSA -keysize 2048 -validity 1 \
+            -storepass "$EPHEMERAL_PASS" \
+            -dname "CN=LockedSecure DryRun,O=CI,C=US" >/dev/null 2>&1
+          {
+            echo "ANDROID_SIGNING_KEY_FILE=$KEYSTORE_PATH"
+            echo "ANDROID_SIGNING_STORE_PASSWORD=$EPHEMERAL_PASS"
+            echo "ANDROID_SIGNING_KEY_ALIAS=dryrun"
+            echo "ANDROID_SIGNING_KEY_PASSWORD=$EPHEMERAL_PASS"
+          } >> "$GITHUB_ENV"
+
+      - name: Build and verify dry-run release APK
+        run: |
+          ./gradlew assembleRelease --no-build-cache --no-daemon
+          mkdir -p release-artifacts
+          FINAL_APK="release-artifacts/locked-secure-${RELEASE_TAG}-universal.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$FINAL_APK"
+          bash scripts/verify_release_apk.sh "$FINAL_APK" "$APP_VERSION_NAME" "$APP_VERSION_CODE" 153600
+
+      - name: Shred ephemeral dry-run keystore
+        if: always()
+        run: |
+          if [ -n "${ANDROID_SIGNING_KEY_FILE:-}" ] && [ -f "$ANDROID_SIGNING_KEY_FILE" ]; then
+            shred -u "$ANDROID_SIGNING_KEY_FILE" || rm -f "$ANDROID_SIGNING_KEY_FILE"
+          fi
+
+      - name: Generate CycloneDX SBOM (dry-run)
+        uses: anchore/sbom-action@dfcb83b97731532d72be422cbc51ee64adb6fd56 # v0.24.4
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: release-artifacts/sbom.cdx.json
+          upload-artifact: false
+
+      - name: Generate SHA-256 checksums (dry-run)
+        run: |
+          (
+            cd release-artifacts
+            sha256sum "locked-secure-${RELEASE_TAG}-universal.apk" sbom.cdx.json > SHA256SUMS.txt
+            cat SHA256SUMS.txt
+          )
+
+      - name: Upload dry-run verification artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-dry-run-artifacts
+          path: |
+            release-artifacts/SHA256SUMS.txt
+            release-artifacts/sbom.cdx.json
+          retention-days: 5

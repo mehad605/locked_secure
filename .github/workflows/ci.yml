@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - overhaul/v2
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  check:
+    name: Format, Static Analysis, Lint & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read # Checkout repository sources for verification
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Android build environment
+        uses: ./.github/actions/setup-android-env # zizmor: ignore[self-repository] -- actionlint v1.7.12 requires './' syntax for local composite actions
+        with:
+          cache-disabled: 'false'
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Run Spotless, Detekt, Lint, Unit Tests & Release Build
+        run: ./gradlew spotlessCheck detekt lint test assembleRelease --no-daemon
+
+      - name: Check unsigned release APK size budget (<= 150 KiB)
+        run: |
+          APK_PATH="app/build/outputs/apk/release/app-release-unsigned.apk"
+          ACTUAL_BYTES="$(wc -c < "$APK_PATH" | tr -d ' ')"
+          echo "Unsigned universal release APK size: ${ACTUAL_BYTES} bytes"
+          if [ "$ACTUAL_BYTES" -gt 153600 ]; then
+            echo "ERROR: Release APK exceeds 150 KiB size budget" >&2
+            exit 1
+          fi
+
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # Required by dependency-review-action to inspect manifest diff
+      pull-requests: read # Read PR metadata for dependency review
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
+        with:
+          fail-on-severity: moderate
