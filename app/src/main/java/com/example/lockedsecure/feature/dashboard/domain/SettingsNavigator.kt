@@ -15,7 +15,6 @@ enum class SettingsTarget {
  * Typed result returned when attempting to open a system settings screen.
  */
 sealed interface NavigationResult {
-
     /** Target settings activity was started successfully. */
     data object Opened : NavigationResult
 
@@ -24,14 +23,15 @@ sealed interface NavigationResult {
      *
      * @property target Which settings destination failed to launch.
      */
-    data class Unavailable(val target: SettingsTarget) : NavigationResult
+    data class Unavailable(
+        val target: SettingsTarget,
+    ) : NavigationResult
 }
 
 /**
  * Navigates the user to Android system settings screens needed to enable protection.
  */
 interface SettingsNavigator {
-
     /**
      * Launches the system Accessibility settings screen.
      */

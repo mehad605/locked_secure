@@ -19,7 +19,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
 class MainActivityCharacterizationTest {
-
     @Test
     fun launchesAndResumesAcrossAllProtectionStates() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()

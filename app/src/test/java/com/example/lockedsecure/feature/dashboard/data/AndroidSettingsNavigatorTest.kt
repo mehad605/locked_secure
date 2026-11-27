@@ -24,7 +24,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
 class AndroidSettingsNavigatorTest {
-
     @Test
     fun launchesAccessibilityAndDeviceAdminIntentsWithExpectedExtras() {
         val activity = Robolectric.buildActivity(Activity::class.java).create().get()
@@ -52,11 +51,10 @@ class AndroidSettingsNavigatorTest {
 
     @Test
     fun returnsUnavailableWhenSettingsActivityCannotBeStarted() {
-        val failingActivity = object : Activity() {
-            override fun startActivity(intent: Intent?) {
-                throw ActivityNotFoundException("No handler")
+        val failingActivity =
+            object : Activity() {
+                override fun startActivity(intent: Intent?): Unit = throw ActivityNotFoundException("No handler")
             }
-        }
         val admin = ComponentName("com.example.lockedsecure", AdminReceiver::class.java.name)
         val navigator = AndroidSettingsNavigator(failingActivity, admin, "explanation")
 

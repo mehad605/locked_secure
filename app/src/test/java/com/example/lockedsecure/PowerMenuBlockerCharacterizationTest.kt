@@ -22,7 +22,6 @@ import org.robolectric.shadows.ShadowAccessibilityService
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
 class PowerMenuBlockerCharacterizationTest {
-
     private lateinit var service: PowerMenuBlockerService
     private lateinit var shadowService: ShadowAccessibilityService
     private lateinit var keyguardManager: KeyguardManager
@@ -38,12 +37,11 @@ class PowerMenuBlockerCharacterizationTest {
         type: Int = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
         pkg: String? = "com.android.systemui",
         cls: String? = "com.android.systemui.globalactions.GlobalActionsDialog",
-    ): AccessibilityEvent {
-        return AccessibilityEvent(type).apply {
+    ): AccessibilityEvent =
+        AccessibilityEvent(type).apply {
             packageName = pkg
             className = cls
         }
-    }
 
     @Test
     fun blocksStandardGlobalActionsDialogWhenLocked() {

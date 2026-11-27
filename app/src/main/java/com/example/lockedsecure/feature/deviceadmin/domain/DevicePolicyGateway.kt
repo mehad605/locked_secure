@@ -4,7 +4,6 @@ package com.example.lockedsecure.feature.deviceadmin.domain
  * Platform gateway abstracting Android `DevicePolicyManager` uninstall-protection operations.
  */
 interface DevicePolicyGateway {
-
     /**
      * Returns true when this application holds Device Owner privilege.
      */

@@ -15,18 +15,17 @@ class AndroidDevicePolicyGateway(
     context: Context,
     private val adminComponent: ComponentName,
 ) : DevicePolicyGateway {
-
     private val appContext: Context = context.applicationContext
 
     private fun devicePolicyManager(): DevicePolicyManager? =
         appContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
 
-    override fun isDeviceOwner(): Boolean =
-        devicePolicyManager()?.isDeviceOwnerApp(appContext.packageName) == true
+    override fun isDeviceOwner(): Boolean = devicePolicyManager()?.isDeviceOwnerApp(appContext.packageName) == true
 
     override fun blockAppUninstall(): Result<Unit> {
-        val manager = devicePolicyManager()
-            ?: return Result.failure(IllegalStateException("DevicePolicyManager unavailable"))
+        val manager =
+            devicePolicyManager()
+                ?: return Result.failure(IllegalStateException("DevicePolicyManager unavailable"))
         return try {
             manager.setUninstallBlocked(adminComponent, appContext.packageName, true)
             Result.success(Unit)

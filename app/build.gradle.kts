@@ -3,6 +3,8 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.spotless)
 }
 
 android {
@@ -109,21 +111,49 @@ android {
         includeInBundle = false
     }
 
+    lint {
+        abortOnError = true
+        warningsAsErrors = true
+        checkReleaseBuilds = true
+        lintConfig = file("lint.xml")
+    }
+
     packaging {
         resources {
-            excludes += setOf(
-                "/META-INF/{AL2.0,LGPL2.1}",
-                "/META-INF/*.version",
-                "/META-INF/*.kotlin_module",
-                "DebugProbesKt.bin",
-                "kotlin/**",
-            )
+            excludes +=
+                setOf(
+                    "/META-INF/{AL2.0,LGPL2.1}",
+                    "/META-INF/*.version",
+                    "/META-INF/*.kotlin_module",
+                    "DebugProbesKt.bin",
+                    "kotlin/**",
+                )
         }
     }
 }
 
 kotlin {
     jvmToolchain(17)
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    source.setFrom(files("src/main/java", "src/test/java"))
+}
+
+spotless {
+    kotlin {
+        target("src/**/*.kt")
+        ktlint("1.5.0")
+            .setEditorConfigPath(rootProject.file(".editorconfig"))
+    }
+    kotlinGradle {
+        target("*.gradle.kts")
+        ktlint("1.5.0")
+            .setEditorConfigPath(rootProject.file(".editorconfig"))
+    }
 }
 
 dependencies {

@@ -18,7 +18,6 @@ class AndroidSettingsNavigator(
     private val adminComponent: ComponentName,
     private val adminExplanation: String,
 ) : SettingsNavigator {
-
     override fun openAccessibilitySettings(): NavigationResult =
         launchIntent(
             intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
@@ -26,15 +25,19 @@ class AndroidSettingsNavigator(
         )
 
     override fun openDeviceAdminSettings(): NavigationResult {
-        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, adminExplanation)
-        }
+        val intent =
+            Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, adminExplanation)
+            }
         return launchIntent(intent = intent, target = SettingsTarget.DEVICE_ADMIN)
     }
 
-    private fun launchIntent(intent: Intent, target: SettingsTarget): NavigationResult {
-        return try {
+    private fun launchIntent(
+        intent: Intent,
+        target: SettingsTarget,
+    ): NavigationResult =
+        try {
             activity.startActivity(intent)
             NavigationResult.Opened
         } catch (_: ActivityNotFoundException) {
@@ -42,5 +45,4 @@ class AndroidSettingsNavigator(
         } catch (_: SecurityException) {
             NavigationResult.Unavailable(target)
         }
-    }
 }

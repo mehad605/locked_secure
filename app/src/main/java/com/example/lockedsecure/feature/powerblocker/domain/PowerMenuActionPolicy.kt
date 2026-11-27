@@ -15,7 +15,6 @@ enum class PowerMenuDecision {
  * Combines [PowerMenuDetector] and [LockStateProvider] to decide whether a window event must be dismissed.
  */
 interface PowerMenuActionPolicy {
-
     /**
      * Evaluates [event] against the current lock state and returns the required [PowerMenuDecision].
      */
@@ -32,7 +31,6 @@ internal class DefaultPowerMenuActionPolicy(
     private val detector: PowerMenuDetector,
     private val lockStateProvider: LockStateProvider,
 ) : PowerMenuActionPolicy {
-
     override fun evaluate(event: PowerMenuEvent): PowerMenuDecision {
         val shouldBlock = detector.isPowerMenu(event) && lockStateProvider.isDeviceLocked()
         return if (shouldBlock) PowerMenuDecision.BLOCK_AND_DISMISS else PowerMenuDecision.ALLOW
@@ -43,7 +41,6 @@ internal class DefaultPowerMenuActionPolicy(
  * Factory creating the default [PowerMenuActionPolicy] without exposing internal implementations.
  */
 object PowerBlockerFactory {
-
     /**
      * Creates a [PowerMenuActionPolicy] wired with the default cross-OEM [PowerMenuDetector].
      */

@@ -14,24 +14,28 @@ import com.example.lockedsecure.feature.deviceadmin.domain.UninstallProtectionRe
  * across app upgrades so active Device Admin / Device Owner registration is never lost.
  */
 class AdminReceiver : DeviceAdminReceiver() {
-
-    override fun onEnabled(context: Context, intent: Intent) {
+    override fun onEnabled(
+        context: Context,
+        intent: Intent,
+    ) {
         super.onEnabled(context, intent)
         val useCase = LockedSecureApp.graph(context).uninstallProtectionUseCase
         when (val result = useCase.activateIfDeviceOwner()) {
             UninstallProtectionResult.Activated -> {
-                Toast.makeText(
-                    context,
-                    R.string.toast_uninstall_protection_activated,
-                    Toast.LENGTH_SHORT,
-                ).show()
+                Toast
+                    .makeText(
+                        context,
+                        R.string.toast_uninstall_protection_activated,
+                        Toast.LENGTH_SHORT,
+                    ).show()
             }
             UninstallProtectionResult.NotDeviceOwner -> Unit
             is UninstallProtectionResult.Failed -> {
-                val message = context.getString(
-                    R.string.toast_uninstall_restriction_failed,
-                    result.reason.orEmpty(),
-                )
+                val message =
+                    context.getString(
+                        R.string.toast_uninstall_restriction_failed,
+                        result.reason.orEmpty(),
+                    )
                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             }
         }

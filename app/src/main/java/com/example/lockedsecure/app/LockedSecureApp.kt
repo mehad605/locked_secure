@@ -13,7 +13,6 @@ import android.os.StrictMode
  * main-thread I/O or resource leaks early during development.
  */
 class LockedSecureApp : Application() {
-
     /** Lazily initialized manual dependency graph shared across app components. */
     val appGraph: AppGraph by lazy { AppGraph(this) }
 
@@ -26,13 +25,15 @@ class LockedSecureApp : Application() {
 
     private fun enableDebugStrictMode() {
         StrictMode.setThreadPolicy(
-            StrictMode.ThreadPolicy.Builder()
+            StrictMode.ThreadPolicy
+                .Builder()
                 .detectAll()
                 .penaltyLog()
                 .build(),
         )
         StrictMode.setVmPolicy(
-            StrictMode.VmPolicy.Builder()
+            StrictMode.VmPolicy
+                .Builder()
                 .detectLeakedClosableObjects()
                 .detectActivityLeaks()
                 .penaltyLog()

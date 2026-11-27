@@ -1,0 +1,41 @@
+build:
+  maxIssues: 0
+
+config:
+  validation: true
+  warningsAsErrors: true
+
+complexity:
+  LongMethod:
+    active: true
+    threshold: 40
+  LongParameterList:
+    active: true
+    functionThreshold: 6
+    constructorThreshold: 5
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 12
+    thresholdInClasses: 10
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 10
+
+style:
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+  WildcardImport:
+    active: true
+  UnusedImports:
+    active: true
+  UnusedPrivateMember:
+    active: true
+  MagicNumber:
+    active: false
+
+exceptions:
+  SwallowedException:
+    active: true
+  TooGenericExceptionCaught:
+    active: true

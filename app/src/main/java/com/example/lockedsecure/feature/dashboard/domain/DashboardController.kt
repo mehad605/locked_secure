@@ -9,7 +9,6 @@ class DashboardController(
     private val statusReader: ProtectionStatusReader,
     private val navigator: SettingsNavigator,
 ) {
-
     /**
      * Reads the latest [ProtectionStatus] from the platform.
      */

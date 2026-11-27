@@ -4,7 +4,6 @@ package com.example.lockedsecure.feature.deviceadmin.domain
  * Enforces uninstall protection when the application is enabled as a Device Administrator.
  */
 interface UninstallProtectionUseCase {
-
     /**
      * Activates uninstall blocking if the app is configured as Device Owner.
      */
@@ -17,7 +16,6 @@ interface UninstallProtectionUseCase {
 internal class DefaultUninstallProtectionUseCase(
     private val gateway: DevicePolicyGateway,
 ) : UninstallProtectionUseCase {
-
     override fun activateIfDeviceOwner(): UninstallProtectionResult {
         if (!gateway.isDeviceOwner()) {
             return UninstallProtectionResult.NotDeviceOwner
@@ -33,7 +31,6 @@ internal class DefaultUninstallProtectionUseCase(
  * Factory creating the default [UninstallProtectionUseCase] while keeping implementations internal.
  */
 object DeviceAdminFactory {
-
     /**
      * Creates an [UninstallProtectionUseCase] backed by [gateway].
      */

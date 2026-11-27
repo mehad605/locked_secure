@@ -4,7 +4,6 @@ package com.example.lockedsecure.feature.powerblocker.domain
  * Classifies whether a [PowerMenuEvent] represents a system power or global-actions dialog.
  */
 fun interface PowerMenuDetector {
-
     /**
      * Returns true if [event] matches a system power/shutdown dialog.
      */
@@ -18,16 +17,14 @@ fun interface PowerMenuDetector {
  * or when `com.android.systemui` opens a dialog whose class name contains both `dialog` and `global`.
  */
 internal class DefaultPowerMenuDetector : PowerMenuDetector {
-
     override fun isPowerMenu(event: PowerMenuEvent): Boolean {
-        if (!event.isWindowStateChanged) return false
-        val className = event.className ?: return false
-        if (className.contains(GLOBAL_ACTIONS_TOKEN, ignoreCase = true)) {
-            return true
-        }
-        return event.packageName == SYSTEM_UI_PACKAGE &&
-            className.contains(DIALOG_TOKEN, ignoreCase = true) &&
-            className.contains(GLOBAL_TOKEN, ignoreCase = true)
+        val className = event.className?.takeIf { event.isWindowStateChanged } ?: return false
+        val matchesGlobalActions = className.contains(GLOBAL_ACTIONS_TOKEN, ignoreCase = true)
+        val matchesSystemUiDialog =
+            event.packageName == SYSTEM_UI_PACKAGE &&
+                className.contains(DIALOG_TOKEN, ignoreCase = true) &&
+                className.contains(GLOBAL_TOKEN, ignoreCase = true)
+        return matchesGlobalActions || matchesSystemUiDialog
     }
 
     private companion object {

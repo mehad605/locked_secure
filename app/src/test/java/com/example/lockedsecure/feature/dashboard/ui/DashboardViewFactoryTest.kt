@@ -21,49 +21,42 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
 class DashboardViewFactoryTest {
+    @Test
+    fun rendersUnprotectedAndPartialProtectionStates() {
+        val activity = Robolectric.buildActivity(Activity::class.java).create().get()
+        val ui = DashboardViewFactory.create(activity, onOpenAccessibility = {}, onOpenAdmin = {})
+
+        ui.render(ProtectionStatus(isAccessibilityEnabled = false, isAdminEnabled = false))
+        val textsOff = collectTexts(ui.rootView)
+        assertTrue(textsOff.containsAll(listOf("LOCKEDSECURE", "ANTI-THEFT SHIELD", "Shield Offline")))
+        assertTrue(textsOff.contains("Power Blocker: Unprotected"))
+        assertTrue(textsOff.contains("Uninstall Protection: Unprotected"))
+        assertTrue(textsOff.containsAll(listOf("Enable Power Blocker", "Enable Admin Protection")))
+
+        ui.render(ProtectionStatus(isAccessibilityEnabled = true, isAdminEnabled = false))
+        val textsAcc = collectTexts(ui.rootView)
+        assertTrue(textsAcc.containsAll(listOf("Shield Offline", "Power Blocker: Protected")))
+        assertTrue(textsAcc.containsAll(listOf("Blocker Service Enabled", "Enable Admin Protection")))
+    }
 
     @Test
-    fun rendersAllProtectionStatesAndDispatchesButtonClicks() {
+    fun rendersFullyProtectedStateAndDispatchesClicks() {
         val activity = Robolectric.buildActivity(Activity::class.java).create().get()
         var accessibilityClicks = 0
         var adminClicks = 0
+        val ui =
+            DashboardViewFactory.create(
+                context = activity,
+                onOpenAccessibility = { accessibilityClicks++ },
+                onOpenAdmin = { adminClicks++ },
+            )
 
-        val ui = DashboardViewFactory.create(
-            context = activity,
-            onOpenAccessibility = { accessibilityClicks++ },
-            onOpenAdmin = { adminClicks++ },
-        )
-
-        // State 1: Neither enabled
-        ui.render(ProtectionStatus(isAccessibilityEnabled = false, isAdminEnabled = false))
-        val textsOff = collectTexts(ui.rootView)
-        assertTrue(textsOff.contains("LOCKEDSECURE"))
-        assertTrue(textsOff.contains("ANTI-THEFT SHIELD"))
-        assertTrue(textsOff.contains("Shield Offline"))
-        assertTrue(textsOff.contains("Power Blocker: Unprotected"))
-        assertTrue(textsOff.contains("Uninstall Protection: Unprotected"))
-        assertTrue(textsOff.contains("Enable Power Blocker"))
-        assertTrue(textsOff.contains("Enable Admin Protection"))
-
-        // State 2: Accessibility only
-        ui.render(ProtectionStatus(isAccessibilityEnabled = true, isAdminEnabled = false))
-        val textsAcc = collectTexts(ui.rootView)
-        assertTrue(textsAcc.contains("Shield Offline"))
-        assertTrue(textsAcc.contains("Power Blocker: Protected"))
-        assertTrue(textsAcc.contains("Uninstall Protection: Unprotected"))
-        assertTrue(textsAcc.contains("Blocker Service Enabled"))
-        assertTrue(textsAcc.contains("Enable Admin Protection"))
-
-        // State 3: Fully protected
         ui.render(ProtectionStatus(isAccessibilityEnabled = true, isAdminEnabled = true))
         val textsFull = collectTexts(ui.rootView)
-        assertTrue(textsFull.contains("Shield Active"))
-        assertTrue(textsFull.contains("Power Blocker: Protected"))
+        assertTrue(textsFull.containsAll(listOf("Shield Active", "Power Blocker: Protected")))
         assertTrue(textsFull.contains("Uninstall Protection: Protected"))
-        assertTrue(textsFull.contains("Blocker Service Enabled"))
-        assertTrue(textsFull.contains("Admin Protection Enabled"))
+        assertTrue(textsFull.containsAll(listOf("Blocker Service Enabled", "Admin Protection Enabled")))
 
-        // Button click dispatch
         val buttons = collectButtons(ui.rootView)
         assertEquals(2, buttons.size)
         buttons[0].performClick()

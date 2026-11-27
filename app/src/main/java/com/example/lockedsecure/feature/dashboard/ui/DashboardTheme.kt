@@ -23,11 +23,16 @@ internal object DashboardTheme {
     const val RIPPLE_OVERLAY = 0x33FFFFFF
 
     /** Converts density-independent pixels [value] to integer pixels. */
-    fun dp(context: Context, value: Float): Int =
-        (value * context.resources.displayMetrics.density).roundToInt()
+    fun dp(
+        context: Context,
+        value: Float,
+    ): Int = (value * context.resources.displayMetrics.density).roundToInt()
 
     /** Returns [color] with its alpha channel scaled to [alphaFraction] in `0f..1f`. */
-    fun withAlpha(color: Int, alphaFraction: Float): Int {
+    fun withAlpha(
+        color: Int,
+        alphaFraction: Float,
+    ): Int {
         val alpha = (255f * alphaFraction).roundToInt().coerceIn(0, 255)
         return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
     }
@@ -39,22 +44,23 @@ internal object DashboardTheme {
         cornerRadiusDp: Float,
         borderWidthDp: Float = 0f,
         borderColor: Int = Color.TRANSPARENT,
-    ): GradientDrawable = GradientDrawable().apply {
-        shape = GradientDrawable.RECTANGLE
-        setColor(fillColor)
-        cornerRadius = dp(context, cornerRadiusDp).toFloat()
-        if (borderWidthDp > 0f) {
-            setStroke(dp(context, borderWidthDp), borderColor)
+    ): GradientDrawable =
+        GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(fillColor)
+            cornerRadius = dp(context, cornerRadiusDp).toFloat()
+            if (borderWidthDp > 0f) {
+                setStroke(dp(context, borderWidthDp), borderColor)
+            }
         }
-    }
 
     /** Creates an oval circle drawable filled with [fillColor]. */
-    fun circle(fillColor: Int): GradientDrawable = GradientDrawable().apply {
-        shape = GradientDrawable.OVAL
-        setColor(fillColor)
-    }
+    fun circle(fillColor: Int): GradientDrawable =
+        GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(fillColor)
+        }
 
     /** Wraps [content] in a standard Android ripple drawable bounded by [content]'s shape. */
-    fun ripple(content: Drawable): Drawable =
-        RippleDrawable(ColorStateList.valueOf(RIPPLE_OVERLAY), content, null)
+    fun ripple(content: Drawable): Drawable = RippleDrawable(ColorStateList.valueOf(RIPPLE_OVERLAY), content, null)
 }

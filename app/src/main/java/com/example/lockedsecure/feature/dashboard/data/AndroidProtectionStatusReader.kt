@@ -21,19 +21,20 @@ class AndroidProtectionStatusReader(
     private val accessibilityComponent: ComponentName,
     private val adminComponent: ComponentName,
 ) : ProtectionStatusReader {
-
     private val appContext: Context = context.applicationContext
 
-    override fun readStatus(): ProtectionStatus = ProtectionStatus(
-        isAccessibilityEnabled = isAccessibilityServiceEnabled(),
-        isAdminEnabled = isDeviceAdminEnabled(),
-    )
+    override fun readStatus(): ProtectionStatus =
+        ProtectionStatus(
+            isAccessibilityEnabled = isAccessibilityServiceEnabled(),
+            isAdminEnabled = isDeviceAdminEnabled(),
+        )
 
     private fun isAccessibilityServiceEnabled(): Boolean {
-        val enabledServices = Settings.Secure.getString(
-            appContext.contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-        ) ?: return false
+        val enabledServices =
+            Settings.Secure.getString(
+                appContext.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+            ) ?: return false
 
         return enabledServices
             .split(':')

@@ -9,7 +9,6 @@ import org.junit.Test
  * Pure JVM unit tests for [DashboardController] and [ProtectionStatus].
  */
 class DashboardControllerTest {
-
     @Test
     fun protectionStatusIsFullyProtectedOnlyWhenBothEnabled() {
         assertFalse(ProtectionStatus(isAccessibilityEnabled = false, isAdminEnabled = false).isFullyProtected)
@@ -21,15 +20,18 @@ class DashboardControllerTest {
     @Test
     fun controllerDelegatesStatusAndNavigationCalls() {
         val expectedStatus = ProtectionStatus(isAccessibilityEnabled = true, isAdminEnabled = false)
-        val navigator = object : SettingsNavigator {
-            override fun openAccessibilitySettings(): NavigationResult = NavigationResult.Opened
-            override fun openDeviceAdminSettings(): NavigationResult =
-                NavigationResult.Unavailable(SettingsTarget.DEVICE_ADMIN)
-        }
-        val controller = DashboardController(
-            statusReader = { expectedStatus },
-            navigator = navigator,
-        )
+        val navigator =
+            object : SettingsNavigator {
+                override fun openAccessibilitySettings(): NavigationResult = NavigationResult.Opened
+
+                override fun openDeviceAdminSettings(): NavigationResult =
+                    NavigationResult.Unavailable(SettingsTarget.DEVICE_ADMIN)
+            }
+        val controller =
+            DashboardController(
+                statusReader = { expectedStatus },
+                navigator = navigator,
+            )
 
         assertEquals(expectedStatus, controller.loadStatus())
         assertEquals(NavigationResult.Opened, controller.onPowerBlockerAction())

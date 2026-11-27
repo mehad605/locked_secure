@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!--
+        Dependency, Gradle, and AGP version bumps are managed deterministically via
+        .github/dependabot.yml rather than failing CI lint whenever an upstream patch releases.
+        All code, security, correctness, and resource lint issues remain strictly enforced.
+    -->
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+    <issue id="GradleDependency" severity="ignore" />
+    <issue id="NewerVersionAvailable" severity="ignore" />
+</lint>

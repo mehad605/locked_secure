@@ -22,18 +22,18 @@ import com.example.lockedsecure.feature.dashboard.ui.DashboardViewFactory
  * rendering to [DashboardUi].
  */
 class MainActivity : Activity() {
-
     private var controller: DashboardController? = null
     private var dashboardUi: DashboardUi? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val activeController = LockedSecureApp.graph(this).createDashboardController(this)
-        val ui = DashboardViewFactory.create(
-            context = this,
-            onOpenAccessibility = { handleNavigation(activeController.onPowerBlockerAction()) },
-            onOpenAdmin = { handleNavigation(activeController.onAdminProtectionAction()) },
-        )
+        val ui =
+            DashboardViewFactory.create(
+                context = this,
+                onOpenAccessibility = { handleNavigation(activeController.onPowerBlockerAction()) },
+                onOpenAdmin = { handleNavigation(activeController.onAdminProtectionAction()) },
+            )
         controller = activeController
         dashboardUi = ui
         setContentView(ui.rootView)
@@ -47,12 +47,19 @@ class MainActivity : Activity() {
         dashboardUi?.render(activeController.loadStatus())
     }
 
+    override fun onDestroy() {
+        controller = null
+        dashboardUi = null
+        super.onDestroy()
+    }
+
     private fun handleNavigation(result: NavigationResult) {
         if (result is NavigationResult.Unavailable) {
-            val messageRes = when (result.target) {
-                SettingsTarget.ACCESSIBILITY -> R.string.toast_accessibility_settings_unavailable
-                SettingsTarget.DEVICE_ADMIN -> R.string.toast_admin_settings_unavailable
-            }
+            val messageRes =
+                when (result.target) {
+                    SettingsTarget.ACCESSIBILITY -> R.string.toast_accessibility_settings_unavailable
+                    SettingsTarget.DEVICE_ADMIN -> R.string.toast_admin_settings_unavailable
+                }
             Toast.makeText(this, messageRes, Toast.LENGTH_SHORT).show()
         }
     }

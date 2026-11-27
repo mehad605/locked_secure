@@ -15,18 +15,18 @@ import com.example.lockedsecure.feature.powerblocker.domain.PowerMenuEvent
  * identity across app upgrades so users do not lose their enabled Accessibility Service state.
  */
 class PowerMenuBlockerService : AccessibilityService() {
-
     private val actionPolicy: PowerMenuActionPolicy by lazy {
         LockedSecureApp.graph(this).powerMenuActionPolicy
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        val domainEvent = PowerMenuEvent(
-            isWindowStateChanged = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
-            packageName = event.packageName?.toString(),
-            className = event.className?.toString(),
-        )
+        val domainEvent =
+            PowerMenuEvent(
+                isWindowStateChanged = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+                packageName = event.packageName?.toString(),
+                className = event.className?.toString(),
+            )
         if (actionPolicy.evaluate(domainEvent) == PowerMenuDecision.BLOCK_AND_DISMISS) {
             performGlobalAction(GLOBAL_ACTION_BACK)
         }

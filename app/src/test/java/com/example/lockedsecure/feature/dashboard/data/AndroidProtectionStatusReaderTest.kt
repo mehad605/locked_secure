@@ -23,7 +23,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
 class AndroidProtectionStatusReaderTest {
-
     private lateinit var context: Context
     private lateinit var accessibilityComponent: ComponentName
     private lateinit var adminComponent: ComponentName

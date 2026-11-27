@@ -3,8 +3,6 @@ package com.example.lockedsecure.app
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
-import com.example.lockedsecure.AdminReceiver
-import com.example.lockedsecure.PowerMenuBlockerService
 import com.example.lockedsecure.R
 import com.example.lockedsecure.feature.dashboard.data.AndroidProtectionStatusReader
 import com.example.lockedsecure.feature.dashboard.data.AndroidSettingsNavigator
@@ -24,16 +22,17 @@ import com.example.lockedsecure.feature.powerblocker.domain.PowerMenuActionPolic
  * DeviceAdminReceiver) allocates only the collaborators it actually needs. Chosen over
  * Hilt/Koin to avoid reflection, code generation, and runtime framework size overhead.
  */
-class AppGraph(context: Context) {
-
+class AppGraph(
+    context: Context,
+) {
     private val appContext: Context = context.applicationContext
 
     private val accessibilityComponent: ComponentName by lazy {
-        ComponentName(appContext, PowerMenuBlockerService::class.java)
+        ComponentName(appContext.packageName, ACCESSIBILITY_SERVICE_CLASS)
     }
 
     private val adminComponent: ComponentName by lazy {
-        ComponentName(appContext, AdminReceiver::class.java)
+        ComponentName(appContext.packageName, ADMIN_RECEIVER_CLASS)
     }
 
     /** Policy deciding whether incoming accessibility window events must be dismissed. */
@@ -62,14 +61,20 @@ class AppGraph(context: Context) {
      * without retaining any Activity reference inside the application graph.
      */
     fun createDashboardController(activity: Activity): DashboardController {
-        val navigator = AndroidSettingsNavigator(
-            activity = activity,
-            adminComponent = adminComponent,
-            adminExplanation = appContext.getString(R.string.device_admin_add_explanation),
-        )
+        val navigator =
+            AndroidSettingsNavigator(
+                activity = activity,
+                adminComponent = adminComponent,
+                adminExplanation = appContext.getString(R.string.device_admin_add_explanation),
+            )
         return DashboardController(
             statusReader = protectionStatusReader,
             navigator = navigator,
         )
+    }
+
+    private companion object {
+        const val ACCESSIBILITY_SERVICE_CLASS = "com.example.lockedsecure.PowerMenuBlockerService"
+        const val ADMIN_RECEIVER_CLASS = "com.example.lockedsecure.AdminReceiver"
     }
 }

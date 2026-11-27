@@ -25,7 +25,6 @@ import org.robolectric.shadows.ShadowToast
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
 class AdminReceiverCharacterizationTest {
-
     private lateinit var context: Context
     private lateinit var dpm: DevicePolicyManager
     private lateinit var adminComponent: ComponentName

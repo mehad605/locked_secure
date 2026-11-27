@@ -22,7 +22,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
 class ManifestContractTest {
-
     @Test
     fun packageNameAndMinSdkMatchContract() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -36,10 +35,11 @@ class ManifestContractTest {
     @Test
     fun appRequestsZeroInternetOrNetworkPermissions() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val pkgInfo = context.packageManager.getPackageInfo(
-            context.packageName,
-            PackageManager.GET_PERMISSIONS,
-        )
+        val pkgInfo =
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_PERMISSIONS,
+            )
         val requested = pkgInfo.requestedPermissions?.toSet().orEmpty()
         assertFalse(requested.contains(android.Manifest.permission.INTERNET))
         assertFalse(requested.contains(android.Manifest.permission.ACCESS_NETWORK_STATE))
@@ -51,16 +51,18 @@ class ManifestContractTest {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val pm = context.packageManager
 
-        val activityInfo = pm.getActivityInfo(
-            ComponentName(context, MainActivity::class.java),
-            0,
-        )
+        val activityInfo =
+            pm.getActivityInfo(
+                ComponentName(context, MainActivity::class.java),
+                0,
+            )
         assertTrue("MainActivity must be exported as launcher", activityInfo.exported)
 
-        val serviceInfo = pm.getServiceInfo(
-            ComponentName(context, PowerMenuBlockerService::class.java),
-            PackageManager.GET_META_DATA,
-        )
+        val serviceInfo =
+            pm.getServiceInfo(
+                ComponentName(context, PowerMenuBlockerService::class.java),
+                PackageManager.GET_META_DATA,
+            )
         assertFalse("PowerMenuBlockerService must not be exported", serviceInfo.exported)
         assertEquals(
             android.Manifest.permission.BIND_ACCESSIBILITY_SERVICE,
@@ -71,10 +73,11 @@ class ManifestContractTest {
             serviceInfo.metaData?.getInt("android.accessibilityservice"),
         )
 
-        val receiverInfo = pm.getReceiverInfo(
-            ComponentName(context, AdminReceiver::class.java),
-            PackageManager.GET_META_DATA,
-        )
+        val receiverInfo =
+            pm.getReceiverInfo(
+                ComponentName(context, AdminReceiver::class.java),
+                PackageManager.GET_META_DATA,
+            )
         assertTrue("AdminReceiver must be exported for DevicePolicyManager", receiverInfo.exported)
         assertEquals(
             android.Manifest.permission.BIND_DEVICE_ADMIN,
@@ -89,11 +92,12 @@ class ManifestContractTest {
     @Test
     fun accessibilityConfigMaintainsLeastPrivilege() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val resId = context.resources.getIdentifier(
-            "accessibility_service_config",
-            "xml",
-            context.packageName,
-        )
+        val resId =
+            context.resources.getIdentifier(
+                "accessibility_service_config",
+                "xml",
+                context.packageName,
+            )
         assertTrue("accessibility_service_config.xml must exist", resId != 0)
         context.resources.getXml(resId).use { parser ->
             var eventType = parser.eventType
@@ -101,17 +105,19 @@ class ManifestContractTest {
             while (eventType != XmlResourceParser.END_DOCUMENT) {
                 if (eventType == XmlResourceParser.START_TAG && parser.name == "accessibility-service") {
                     foundTag = true
-                    val canRetrieve = parser.getAttributeBooleanValue(
-                        "http://schemas.android.com/apk/res/android",
-                        "canRetrieveWindowContent",
-                        true,
-                    )
+                    val canRetrieve =
+                        parser.getAttributeBooleanValue(
+                            "http://schemas.android.com/apk/res/android",
+                            "canRetrieveWindowContent",
+                            true,
+                        )
                     assertFalse("canRetrieveWindowContent must remain false", canRetrieve)
-                    val feedback = parser.getAttributeIntValue(
-                        "http://schemas.android.com/apk/res/android",
-                        "accessibilityFeedbackType",
-                        0,
-                    )
+                    val feedback =
+                        parser.getAttributeIntValue(
+                            "http://schemas.android.com/apk/res/android",
+                            "accessibilityFeedbackType",
+                            0,
+                        )
                     assertEquals(AccessibilityServiceInfo.FEEDBACK_GENERIC, feedback)
                 }
                 eventType = parser.next()

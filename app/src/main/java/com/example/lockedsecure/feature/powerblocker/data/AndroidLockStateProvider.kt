@@ -13,7 +13,6 @@ import com.example.lockedsecure.feature.powerblocker.domain.LockStateProvider
 class AndroidLockStateProvider(
     context: Context,
 ) : LockStateProvider {
-
     private val appContext: Context = context.applicationContext
 
     override fun isDeviceLocked(): Boolean {

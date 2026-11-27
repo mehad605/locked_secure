@@ -10,7 +10,6 @@ import com.example.lockedsecure.feature.dashboard.domain.ProtectionStatus
  * without touching `MainActivity`, domain controllers, or tests.
  */
 interface DashboardUi {
-
     /** Root view hierarchy to attach as the Activity content view. */
     val rootView: View
 
