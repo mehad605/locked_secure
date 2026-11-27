@@ -1,32 +1,34 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
-  alias(libs.plugins.android.application)
-  alias(libs.plugins.compose.compiler)
-  alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.android.application)
 }
 
 android {
     namespace = "com.example.lockedsecure"
     compileSdk = 36
 
-    // ── Signing Configuration (Industry Standard) ──
+    // Signing configuration: local app/keystore.properties or CI environment variables
     val keystorePropertiesFile = rootProject.file("app/keystore.properties")
     val keystoreProperties = Properties()
     var hasSigning = false
 
     if (keystorePropertiesFile.exists()) {
-        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+        FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
         hasSigning = true
     } else {
-        // Fallback to environment variables (for GitHub Actions CI/CD)
         val envFile = System.getenv("ANDROID_SIGNING_KEY_FILE")
         val envStorePass = System.getenv("ANDROID_SIGNING_STORE_PASSWORD")
         val envAlias = System.getenv("ANDROID_SIGNING_KEY_ALIAS")
         val envKeyPass = System.getenv("ANDROID_SIGNING_KEY_PASSWORD")
 
-        if (!envFile.isNullOrBlank() && !envStorePass.isNullOrBlank() && !envAlias.isNullOrBlank() && !envKeyPass.isNullOrBlank()) {
+        if (
+            !envFile.isNullOrBlank() &&
+            !envStorePass.isNullOrBlank() &&
+            !envAlias.isNullOrBlank() &&
+            !envKeyPass.isNullOrBlank()
+        ) {
             keystoreProperties["storeFile"] = envFile
             keystoreProperties["storePassword"] = envStorePass
             keystoreProperties["keyAlias"] = envAlias
@@ -47,6 +49,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    androidResources {
+        // Keep only English strings; prevents transitive/platform locale bloat in resources.arsc
+        localeFilters += listOf("en")
+    }
+
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
@@ -63,15 +70,6 @@ android {
         }
     }
 
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = false
-        }
-    }
-
     buildTypes {
         release {
             if (hasSigning) {
@@ -79,11 +77,15 @@ android {
             }
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            vcsInfo.include = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
         debug {
             if (hasSigning) {
-                signingConfig = signingConfigs.getByName("release") // Use release key for local debug for seamless updating
+                signingConfig = signingConfigs.getByName("release")
             }
         }
     }
@@ -92,16 +94,30 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     buildFeatures {
-        compose = true
         aidl = false
         buildConfig = false
+        compose = false
+        resValues = false
         shaders = false
+    }
+
+    // Omit Play dependency block for deterministic, smaller release APKs
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     packaging {
         resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += setOf(
+                "/META-INF/{AL2.0,LGPL2.1}",
+                "/META-INF/*.version",
+                "/META-INF/*.kotlin_module",
+                "DebugProbesKt.bin",
+                "kotlin/**",
+            )
         }
     }
 }
@@ -111,44 +127,10 @@ kotlin {
 }
 
 dependencies {
-  val composeBom = platform(libs.androidx.compose.bom)
-  implementation(composeBom)
-  androidTestImplementation(composeBom)
+    // Zero third-party runtime dependencies: LockedSecure uses Android platform APIs only.
 
-  // Core Android dependencies
-  implementation(libs.androidx.core.ktx)
-  implementation(libs.androidx.lifecycle.runtime.ktx)
-  implementation(libs.androidx.activity.compose)
-
-  // Arch Components
-  implementation(libs.androidx.lifecycle.runtime.compose)
-  implementation(libs.androidx.lifecycle.viewmodel.compose)
-
-  // Compose
-  implementation(libs.androidx.compose.ui)
-  implementation(libs.androidx.compose.ui.tooling.preview)
-  implementation(libs.androidx.compose.material3)
-  
-  // Tooling
-  debugImplementation(libs.androidx.compose.ui.tooling)
-  // Instrumented tests
-  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-  debugImplementation(libs.androidx.compose.ui.test.manifest)
-
-  // Local tests: jUnit, coroutines, Robolectric
-  testImplementation(libs.junit)
-  testImplementation(libs.kotlinx.coroutines.test)
-  testImplementation(libs.robolectric)
-  testImplementation(libs.androidx.test.core)
-
-  // Instrumented tests: jUnit rules and runners
-  androidTestImplementation(libs.androidx.test.core)
-  androidTestImplementation(libs.androidx.test.ext.junit)
-  androidTestImplementation(libs.androidx.test.runner)
-  androidTestImplementation(libs.androidx.test.espresso.core)
-
-  // Navigation (optional template residue - kept for compatibility)
-  implementation(libs.androidx.navigation3.ui)
-  implementation(libs.androidx.navigation3.runtime)
-  implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    // JVM unit & Robolectric characterization tests
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }

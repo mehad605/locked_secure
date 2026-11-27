@@ -1,6 +1,19 @@
 <resources>
     <string name="app_name">LockedSecure</string>
     <string name="accessibility_service_description">LockedSecure blocks the power menu when the screen is locked to prevent unauthorized phone shutdown by thieves.</string>
+    <string name="dashboard_title">LOCKEDSECURE</string>
+    <string name="dashboard_subtitle">ANTI-THEFT SHIELD</string>
+    <string name="status_shield_active">Shield Active</string>
+    <string name="status_shield_offline">Shield Offline</string>
+    <string name="label_power_blocker">Power Blocker</string>
+    <string name="label_uninstall_protection">Uninstall Protection</string>
+    <string name="state_protected">Protected</string>
+    <string name="state_unprotected">Unprotected</string>
+    <string name="status_row_format">%1$s: %2$s</string>
+    <string name="btn_blocker_enabled">Blocker Service Enabled</string>
+    <string name="btn_enable_power_blocker">Enable Power Blocker</string>
+    <string name="btn_admin_enabled">Admin Protection Enabled</string>
+    <string name="btn_enable_admin_protection">Enable Admin Protection</string>
     <string name="toast_uninstall_protection_activated">Uninstall protection activated</string>
     <string name="toast_uninstall_restriction_failed">Could not restrict uninstall: %1$s</string>
     <string name="device_admin_add_explanation">Protects LockedSecure from deletion.</string>

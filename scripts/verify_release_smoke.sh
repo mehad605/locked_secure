@@ -3,7 +3,7 @@
 # Verifies Core Contracts C6, C7, C8, and R1 (zero crashes in logcat during core flows).
 set -euo pipefail
 
-APK="${1:-app/build/outputs/apk/release/app-x86_64-release.apk}"
+APK="${1:-app/build/outputs/apk/release/app-release.apk}"
 PKG="com.example.lockedsecure"
 ACT="$PKG/.MainActivity"
 
