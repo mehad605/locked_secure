@@ -2,8 +2,7 @@ package com.example.lockedsecure
 
 import android.accessibilityservice.AccessibilityService
 import android.view.accessibility.AccessibilityEvent
-import com.example.lockedsecure.feature.powerblocker.data.AndroidLockStateProvider
-import com.example.lockedsecure.feature.powerblocker.domain.PowerBlockerFactory
+import com.example.lockedsecure.app.LockedSecureApp
 import com.example.lockedsecure.feature.powerblocker.domain.PowerMenuActionPolicy
 import com.example.lockedsecure.feature.powerblocker.domain.PowerMenuDecision
 import com.example.lockedsecure.feature.powerblocker.domain.PowerMenuEvent
@@ -18,7 +17,7 @@ import com.example.lockedsecure.feature.powerblocker.domain.PowerMenuEvent
 class PowerMenuBlockerService : AccessibilityService() {
 
     private val actionPolicy: PowerMenuActionPolicy by lazy {
-        PowerBlockerFactory.createPolicy(AndroidLockStateProvider(this))
+        LockedSecureApp.graph(this).powerMenuActionPolicy
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {

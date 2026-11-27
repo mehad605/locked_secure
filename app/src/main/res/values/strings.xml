@@ -3,4 +3,7 @@
     <string name="accessibility_service_description">LockedSecure blocks the power menu when the screen is locked to prevent unauthorized phone shutdown by thieves.</string>
     <string name="toast_uninstall_protection_activated">Uninstall protection activated</string>
     <string name="toast_uninstall_restriction_failed">Could not restrict uninstall: %1$s</string>
+    <string name="device_admin_add_explanation">Protects LockedSecure from deletion.</string>
+    <string name="toast_accessibility_settings_unavailable">Could not open Accessibility settings</string>
+    <string name="toast_admin_settings_unavailable">Could not open Device Admin settings</string>
 </resources>

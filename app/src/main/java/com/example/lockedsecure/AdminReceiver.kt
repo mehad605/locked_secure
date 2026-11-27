@@ -1,12 +1,10 @@
 package com.example.lockedsecure
 
 import android.app.admin.DeviceAdminReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
-import com.example.lockedsecure.feature.deviceadmin.data.AndroidDevicePolicyGateway
-import com.example.lockedsecure.feature.deviceadmin.domain.DeviceAdminFactory
+import com.example.lockedsecure.app.LockedSecureApp
 import com.example.lockedsecure.feature.deviceadmin.domain.UninstallProtectionResult
 
 /**
@@ -19,11 +17,7 @@ class AdminReceiver : DeviceAdminReceiver() {
 
     override fun onEnabled(context: Context, intent: Intent) {
         super.onEnabled(context, intent)
-        val gateway = AndroidDevicePolicyGateway(
-            context = context,
-            adminComponent = ComponentName(context, AdminReceiver::class.java),
-        )
-        val useCase = DeviceAdminFactory.createUseCase(gateway)
+        val useCase = LockedSecureApp.graph(context).uninstallProtectionUseCase
         when (val result = useCase.activateIfDeviceOwner()) {
             UninstallProtectionResult.Activated -> {
                 Toast.makeText(
