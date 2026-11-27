@@ -5,46 +5,48 @@
 </p>
 
 <p align="center">
-  <strong>Anti-theft shield for Android — blocks the power menu when your device is locked.</strong>
+  <strong>Ultra-lightweight anti-theft shield for Android — blocks the power menu while your screen is locked.</strong>
 </p>
 
 <p align="center">
   <a href="#features">Features</a> •
-  <a href="#prerequisites">Prerequisites</a> •
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
-  <a href="#build">Build</a> •
-  <a href="#tech-stack">Tech Stack</a> •
+  <a href="#build--verify">Build &amp; Verify</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#release">Release</a> •
   <a href="#license">License</a>
 </p>
 
 ---
 
-LockedSecure is a minimal Android security utility that prevents unauthorized device shutdown while the screen is locked. By intercepting the system power dialog via an Accessibility Service and enforcing Device Admin policies, it ensures your device stays powered on and trackable if lost or stolen. No internet permissions required — everything runs offline.
+LockedSecure (`com.example.lockedsecure`) is a minimal, offline-only Android security utility that prevents unauthorized device shutdown while the lock screen is active. It intercepts the system power dialog via a least-privilege `AccessibilityService` (`canRetrieveWindowContent="false"`) and reinforces uninstall deterrence via a `DeviceAdminReceiver`.
+
+Built strictly on Android platform APIs (`minSdk = 24`, zero third-party runtime dependencies), the signed universal release APK is **~59 KB**, runs zero startup `ContentProvider`s, schedules zero background jobs or alarms, and declares zero internet permissions.
 
 ## Features
 
-- **Power Menu Blocking** — Automatically dismisses the shutdown dialog when the keyguard is locked.
-- **Uninstall Protection** — Device Owner mode can block ADB uninstallation.
-- **Offline First** — Zero internet permissions; no data leaves your device.
-- **Minimal UI** — Single-screen dashboard with real-time protection status.
-- **Split APK Support** — Architecture-specific builds for smaller download sizes.
+- **Power Menu Blocking** — Dismisses the system power/global-actions dialog (`GLOBAL_ACTION_BACK`) whenever the keyguard is locked.
+- **Uninstall Protection** — Registers as a Device Administrator; when provisioned as Device Owner, activates `setUninstallBlocked(true)`.
+- **Offline by Design** — Zero network permissions, zero telemetry, zero external dependencies.
+- **Minimal Matte-Dark Dashboard** — Single edge-to-edge screen displaying live protection status and direct shortcuts to system settings.
+- **Universal ~59 KB APK** — Zero native `.so` libraries; one tiny signed APK works on all CPU architectures (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`).
 
 ## Prerequisites
 
-- **Android Studio** Ladybug (2024.2.1+) or later
-- **JDK 17** (Temurin recommended)
-- **Android SDK** with `platforms;36` and `build-tools;36+`
-- **Gradle 9.1** (wrapper included)
+- **JDK 17** (Temurin recommended; Gradle toolchain resolver included)
+- **Android SDK** with `platforms;android-36` and `build-tools;36.0.0`
+- **Gradle 9.1.0** (wrapper included, SHA-256 verified)
 
 ## Installation
 
-### Sideload (pre-built APKs)
+### Sideload (pre-built universal APK)
 
-Download the latest split APK for your device architecture from the [Releases](https://github.com/mehad605/locked_secure/releases) page:
+Download the latest signed universal APK and `SHA256SUMS.txt` from [GitHub Releases](https://github.com/mehad605/locked_secure/releases):
 
 ```bash
-adb install locked-secure-v1.0.0-arm64-v8a.apk
+sha256sum -c SHA256SUMS.txt
+adb install locked-secure-v2.0.0-universal.apk
 ```
 
 ### Build from source
@@ -55,33 +57,45 @@ cd locked_secure
 ./gradlew assembleRelease
 ```
 
-APKs will be in `app/build/outputs/apk/release/`.
+The release APK is written to `app/build/outputs/apk/release/app-release.apk` (or `app-release-unsigned.apk` if no signing config is provided).
 
 ## Usage
 
-1. Open **LockedSecure** on your device.
-2. Tap **Enable Power Blocker** to activate the Accessibility Service.
-3. Tap **Enable Admin Protection** to activate Device Administrator.
+1. Open **LockedSecure**.
+2. Tap **Enable Power Blocker** and turn on LockedSecure in Android Accessibility settings.
+3. Tap **Enable Admin Protection** and activate LockedSecure as a Device Administrator.
 
-> **Note for Android 13+:** If the Accessibility toggle appears disabled, go to **Settings > Apps > LockedSecure > three-dot menu > Allow restricted settings**, then retry.
+> **Android 13+ note:** If the Accessibility toggle is greyed out after sideloading, open **Settings → Apps → LockedSecure → ⋮ → Allow restricted settings**, then return to Accessibility settings.
 
-### Set as Device Owner (optional, blocks ADB uninstall)
+### Optional: Device Owner mode (blocks ADB uninstall)
 
 ```bash
 adb shell dpm set-device-owner com.example.lockedsecure/.AdminReceiver
 ```
 
-## Build
+## Build & Verify
 
-### Debug
+### Run debug build
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-### Release (signed)
+### Run full quality & test suite
 
-Create `app/keystore.properties`:
+```bash
+./gradlew spotlessCheck detekt lint test assembleRelease
+```
+
+### Auto-format Kotlin & Gradle files
+
+```bash
+./gradlew spotlessApply
+```
+
+### Signed local release build
+
+Create `app/keystore.properties` (git-ignored) or export the `ANDROID_SIGNING_*` variables documented in [.env.example](.env.example):
 
 ```properties
 storeFile=../release-key.jks
@@ -90,42 +104,39 @@ keyAlias=your_key_alias
 keyPassword=your_key_password
 ```
 
-Then:
+Then run `./gradlew assembleRelease`.
+
+### Release smoke test (requires connected Android device or emulator)
 
 ```bash
-./gradlew assembleRelease
+bash scripts/verify_release_smoke.sh app/build/outputs/apk/release/app-release.apk
 ```
 
-### CI/CD
+## Architecture
 
-The included GitHub Actions workflow (`.github/workflows/release.yml`) automatically builds and publishes signed split APKs when a tag matching `v*` is pushed. Configure the following repository secrets:
+LockedSecure uses a clean **package-by-feature** layout (`ui` → `domain` ← `data`) with lazy manual DI (`AppGraph`) and automated boundary enforcement (`ArchitectureBoundaryTest`):
 
-| Secret | Description |
-|---|---|
-| `SIGNING_KEY` | Base64-encoded `.jks` keystore |
-| `SIGNING_STORE_PASSWORD` | Keystore password |
-| `SIGNING_KEY_ALIAS` | Key alias |
-| `SIGNING_KEY_PASSWORD` | Key password |
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Architecture diagram, package map, and data flows
+- [docs/HOW_TO.md](docs/HOW_TO.md) — Tested recipes for adding features, screens, settings, or replacing layers
+- [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md) — Complete dependency & APK byte breakdown
+- [docs/adr/](docs/adr/) — Architecture Decision Records
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Contribution workflow and style rules
+
+## Release
+
+Automated releases are built and published via [.github/workflows/release.yml](.github/workflows/release.yml) from signed SemVer tags (`vMAJOR.MINOR.PATCH`). See [docs/RELEASING.md](docs/RELEASING.md) for the full release, dry-run, and key-rotation runbook, and [docs/REPO_SETTINGS.md](docs/REPO_SETTINGS.md) for recommended GitHub repository protections.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Language | Kotlin 2.3 |
-| UI | Jetpack Compose + Material 3 |
-| Architecture | Single-activity, Compose-driven |
-| Build | Gradle 9.1 with Kotlin DSL |
-| Min SDK | 24 (Android 7.0) |
-| Target SDK | 36 (Android 16) |
-| CI/CD | GitHub Actions |
-| Signing | APK Signature Scheme V2/V3 |
+| Language | Kotlin (JVM 17 toolchain) |
+| UI | Pure Android Framework Views (`minSdk = 24`, `targetSdk = 36`) |
+| Architecture | Package-by-feature Clean Architecture + manual lazy DI (`AppGraph`) |
+| Build | Gradle 9.1.0 + AGP 9.0.1 + R8 full mode |
+| Quality Gates | Spotless (ktlint), Detekt, Android Lint (`warningsAsErrors`), JUnit 4 + Robolectric |
+| CI/CD | GitHub Actions with SHA-pinned actions, SBOM, SLSA provenance, SHA-256 checksums |
 
 ## License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-<p align="center">
-  Made with ❌ internet permissions — LockedSecure is offline by design.
-</p>
